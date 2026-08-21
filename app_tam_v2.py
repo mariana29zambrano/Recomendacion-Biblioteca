@@ -258,7 +258,17 @@ MAPEO_FAC = {
 @st.cache_resource
 def conectar_sheets():
     scopes=["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"]
-    creds=Credentials.from_service_account_file("credentials.json",scopes=scopes)
+    # En Streamlit Cloud las credenciales viven en st.secrets (no se puede subir
+    # credentials.json al repo); en local, si no hay secrets.toml, cae al archivo
+    # (st.secrets lanza StreamlitSecretNotFoundError si no existe ningún secrets.toml).
+    try:
+        tiene_secrets = "gcp_service_account" in st.secrets
+    except Exception:
+        tiene_secrets = False
+    if tiene_secrets:
+        creds=Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]),scopes=scopes)
+    else:
+        creds=Credentials.from_service_account_file("credentials.json",scopes=scopes)
     client=gspread.authorize(creds)
     sheet=client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
     if not sheet.get_all_values():
@@ -284,12 +294,27 @@ def nt(t):
     t=str(t).lower(); t=unidecode(t); t=re.sub(r"[^a-z0-9\s]"," ",t)
     return re.sub(r"\s+"," ",t).strip()
 
+# IDs de Google Drive de los CSV pesados (no versionados en el repo, ver CLAUDE.md).
+ID_COLECCION = "1_qYRsiK9njZnciuQERVaLo22dGnt32s6"
+ID_PRESTAMOS = "1-TXpnJlUsGPT7spJ4ZFUQcsxRa21U68n"
+
 # ── Carga de datos ─────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner="Cargando la colección bibliográfica...")
 def cargar_datos():
-    import warnings; warnings.filterwarnings("ignore")
-    col=pd.read_csv("data/Biblioteca_General.csv",low_memory=False)
-    pre=pd.read_csv("data/Prestamos_completo.csv",low_memory=False)
+    import warnings, os, gdown
+    warnings.filterwarnings("ignore")
+
+    path_col = "data/Biblioteca_General.csv"
+    path_pre = "data/Prestamos_completo.csv"
+    os.makedirs("data", exist_ok=True)
+
+    if not os.path.exists(path_col):
+        gdown.download(f"https://drive.google.com/uc?id={ID_COLECCION}", path_col, quiet=False)
+    if not os.path.exists(path_pre):
+        gdown.download(f"https://drive.google.com/uc?id={ID_PRESTAMOS}", path_pre, quiet=False)
+
+    col=pd.read_csv(path_col,low_memory=False)
+    pre=pd.read_csv(path_pre,low_memory=False)
 
     def contrib(v):
         try:

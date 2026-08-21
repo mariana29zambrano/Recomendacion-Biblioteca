@@ -1,0 +1,11 @@
+# Credenciales — nunca subir
+credentials.json
+.streamlit/secrets.toml
+
+# Datos pesados — se descargan de Google Drive en tiempo de ejecución (ver cargar_datos())
+data/
+
+# Entorno / caches de Python
+venv/
+__pycache__/
+*.pyc
