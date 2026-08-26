@@ -607,7 +607,7 @@ Los datos de este formulario serán usados exclusivamente para la inscripción a
 
             with col2:
                 st.markdown("**Historial en la biblioteca**")
-                tiene = st.radio("¿Has realizado préstamos de libros en la Biblioteca General?", ["Sí","No","No estoy seguro/a"])
+                tiene = st.radio("¿Has realizado préstamos de libros en la Biblioteca General?", ["Sí","No"])
                 titulo_rec = ""
                 if tiene == "Sí":
                     titulo_rec = st.text_input("¿Recuerdas el título de algún libro que hayas prestado recientemente?", placeholder="Ej: Introducción a la estadística")
@@ -659,47 +659,41 @@ Los datos de este formulario serán usados exclusivamente para la inscripción a
             st.markdown("Queremos conocer tu opinión para seguir mejorando el sistema.")
             st.markdown("En una escala de 1 a 7, ¿qué tan de acuerdo estás con las siguientes afirmaciones?")
 
-            opciones = [1,2,3,4,5,6,7]
-            etq_cortas = {1:"1\nTotalmente\nen desacuerdo",2:"2\nModeradamente\nen desacuerdo",3:"3\nAlgo en\ndesacuerdo",4:"4\nNeutral",5:"5\nAlgo de\nacuerdo",6:"6\nModeradamente\nde acuerdo",7:"7\nTotalmente\nde acuerdo"}
+            etq_likert = ["Totalmente\nen desacuerdo","Moderadamente\nen desacuerdo","Algo en\ndesacuerdo","Neutral","Algo de\nacuerdo","Moderadamente\nde acuerdo","Totalmente\nde acuerdo"]
 
             def fila_tam(label, key):
                 st.markdown(f"**{label}**")
-                val = st.radio("", opciones, format_func=lambda x: str(x), horizontal=True, key=key, label_visibility="collapsed")
+                if key not in st.session_state:
+                    st.session_state[key] = 1
                 cols = st.columns(7)
-                labels_fila = ["Totalmente\nen desacuerdo","Moderadamente\nen desacuerdo","Algo en\ndesacuerdo","Neutral","Algo de\nacuerdo","Moderadamente\nde acuerdo","Totalmente\nde acuerdo"]
-                for i, (col, lbl) in enumerate(zip(cols, labels_fila)):
+                for i, col in enumerate(cols):
+                    n = i+1
                     with col:
-                        st.markdown(f'<div style="font-size:9px;color:#94A3B8;text-align:center;line-height:1.2;">{lbl}</div>', unsafe_allow_html=True)
-                return val
+                        tipo = "primary" if st.session_state[key] == n else "secondary"
+                        if st.button(str(n), key=f"{key}_btn{n}", type=tipo, use_container_width=True):
+                            st.session_state[key] = n
+                            st.rerun()
+                        st.markdown(f'<div style="font-size:9px;color:#94A3B8;text-align:center;line-height:1.2;">{etq_likert[i]}</div>', unsafe_allow_html=True)
+                return st.session_state[key]
 
-            st.markdown('<div style="font-size:14px;font-weight:700;color:#002147;border-left:3px solid #002147;padding-left:10px;margin:20px 0 4px 0;">Utilidad Percibida</div>', unsafe_allow_html=True)
-            st.caption("Adaptado de Davis (1989)")
             pu1 = fila_tam("Las recomendaciones fueron relevantes para mis intereses académicos.", "PU1")
             pu2 = fila_tam("La información de los libros me ayudó a tomar una buena decisión.", "PU2")
             pu3 = fila_tam("El sistema fue útil en mi vida académica.", "PU3")
             pu4 = fila_tam("Usar este sistema aumentaría mi productividad académica.", "PU4")
 
-            st.markdown('<div style="font-size:14px;font-weight:700;color:#002147;border-left:3px solid #002147;padding-left:10px;margin:20px 0 4px 0;">Facilidad de Uso</div>', unsafe_allow_html=True)
-            st.caption("Adaptado de Davis (1989)")
             peou1 = fila_tam("Mi interacción con el sistema fue clara y comprensible.", "PEOU1")
             peou2 = fila_tam("Interactuar con el sistema no requirió mucho esfuerzo mental.", "PEOU2")
             peou3 = fila_tam("El sistema me resultó fácil de usar.", "PEOU3")
             peou4 = fila_tam("Me resultó fácil lograr que el sistema hiciera lo que quería.", "PEOU4")
 
-            st.markdown('<div style="font-size:14px;font-weight:700;color:#002147;border-left:3px solid #002147;padding-left:10px;margin:20px 0 4px 0;">Relevancia para mis actividades</div>', unsafe_allow_html=True)
-            st.caption("Adaptado de Venkatesh & Bala (2008)")
             rel1 = fila_tam("En mis actividades académicas, el uso del sistema es importante.", "REL1")
             rel2 = fila_tam("En mis actividades académicas, el uso del sistema es relevante.", "REL2")
             rel3 = fila_tam("El uso del sistema es pertinente para mis diversas actividades académicas.", "REL3")
 
-            st.markdown('<div style="font-size:14px;font-weight:700;color:#002147;border-left:3px solid #002147;padding-left:10px;margin:20px 0 4px 0;">Calidad de los resultados</div>', unsafe_allow_html=True)
-            st.caption("Adaptado de Venkatesh & Bala (2008)")
             out1 = fila_tam("La calidad de las recomendaciones que obtengo del sistema es alta.", "OUT1")
             out2 = fila_tam("No tengo problema con la calidad de las recomendaciones del sistema.", "OUT2")
             out3 = fila_tam("Considero que los resultados del sistema son excelentes.", "OUT3")
 
-            st.markdown('<div style="font-size:14px;font-weight:700;color:#002147;border-left:3px solid #002147;padding-left:10px;margin:20px 0 4px 0;">Intención de Uso</div>', unsafe_allow_html=True)
-            st.caption("Adaptado de Venkatesh & Bala (2008)")
             bi1 = fila_tam("Asumiendo que tuviera acceso al sistema, tengo intención de usarlo.", "BI1")
             bi2 = fila_tam("Dado que tuviera acceso al sistema, predigo que lo usaría.", "BI2")
             meses = st.selectbox("Planeo usar el sistema en los próximos:", ["1 mes","3 meses","6 meses","12 meses","Más de 12 meses","No planeo usarlo"], key="BI3")
