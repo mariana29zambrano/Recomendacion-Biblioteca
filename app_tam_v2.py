@@ -272,14 +272,17 @@ def conectar_sheets():
     client=gspread.authorize(creds)
     sheet=client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
     if not sheet.get_all_values():
-        sheet.append_row(["timestamp","carnet","edad","perfil","facultad","programa","semestre_cargo","genero","tiene_prestamos","titulo_recordado","favoritos_A","favoritos_B","favoritos_C","lista_favorita","PU1","PU2","PU3","PU4","PEOU1","PEOU2","PEOU3","PEOU4","REL1","REL2","REL3","OUT1","OUT2","OUT3","BI1","BI2","BI3"])
+        # update() en vez de append_row(): escribe directo en la fila 1, evitando la
+        # condicion de carrera donde append_row (header) y el primer guardar() (dato)
+        # calculan "siguiente fila vacia" casi al tiempo y ambos aterrizan en la fila 1.
+        sheet.update([["timestamp","carnet","edad","perfil","facultad","programa","semestre_cargo","genero","tiene_prestamos","titulo_recordado","algoritmo","favoritos","PU1","PU2","PU3","PU4","PEOU1","PEOU2","PEOU3","PEOU4","REL1","REL2","REL3","OUT1","OUT2","OUT3","BI1","BI2","BI3"]], "A1")
     return sheet
 
 def guardar(sheet, d):
     sheet.append_row([datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         d.get("carnet",""),d.get("edad",""),d.get("perfil",""),d.get("facultad",""),d.get("programa",""),
         d.get("semestre_cargo",""),d.get("genero",""),d.get("tiene_prestamos",""),d.get("titulo_recordado",""),
-        d.get("favoritos_A",""),d.get("favoritos_B",""),d.get("favoritos_C",""),d.get("lista_favorita",""),
+        d.get("algoritmo",""),d.get("favoritos",""),
         d.get("PU1",""),d.get("PU2",""),d.get("PU3",""),d.get("PU4",""),
         d.get("PEOU1",""),d.get("PEOU2",""),d.get("PEOU3",""),d.get("PEOU4",""),
         d.get("REL1",""),d.get("REL2",""),d.get("REL3",""),
@@ -455,15 +458,6 @@ def rec_A(fac,prog,datos,n=TOP_N,carnet=""):
     cand["score"]=W_HIST*cand["score_historial"]+W_PERF*cand["score_perfil"]+W_POP*cand["score_pop_norm"]
     return cand.sort_values("score",ascending=False).head(n)[["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
 
-def rec_B(fac,datos,n=TOP_N):
-    obras=datos["obras"]; pop_fac=datos["pop_fac"]
-    pf=pop_fac[pop_fac["facultad_clean"]==fac].sort_values("score_pop",ascending=False).head(n)
-    r=obras[obras["instance_id"].isin(pf["instance_id"])][["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
-    if r.empty:
-        pg=datos["pop_gen"].head(n)
-        r=obras[obras["instance_id"].isin(pg["instance_id"])][["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
-    return r
-
 def rec_C(titulo,datos,n=TOP_N):
     obras=datos["obras"]; vec=datos["vec"]; X=datos["X"]
     if not titulo or not titulo.strip():
@@ -565,7 +559,7 @@ Este ejercicio hace parte del trabajo de grado *"Diseño de un sistema de recome
 
 **¿Qué harás?**
 - Ingresarás información sobre tu perfil académico
-- Recibirás recomendaciones de libros generadas por tres algoritmos distintos
+- Recibirás una lista de recomendaciones de libros generada por el sistema
 - Evaluarás su relevancia y responderás un breve cuestionario
 
 **Sobre tus datos:**
@@ -616,7 +610,7 @@ Los datos de este formulario serán usados exclusivamente para la inscripción a
                 tiene = st.radio("¿Has realizado préstamos de libros en la Biblioteca General?", ["Sí","No","No estoy seguro/a"])
                 titulo_rec = ""
                 if tiene == "Sí":
-                    titulo_rec = st.text_input("¿Recuerdas el título de algún libro que hayas prestado recientemente? (opcional):", placeholder="Ej: Introducción a la estadística")
+                    titulo_rec = st.text_input("¿Recuerdas el título de algún libro que hayas prestado recientemente?", placeholder="Ej: Introducción a la estadística")
 
             c1, c2 = st.columns([1,4])
             with c2:
@@ -624,6 +618,7 @@ Los datos de este formulario serán usados exclusivamente para la inscripción a
                     errores = []
                     if facultad == "— Selecciona —": errores.append("Por favor selecciona tu facultad.")
                     if ("Estudiante" in perfil or perfil == "Profesor/a") and not semestre_cargo: errores.append("Por favor selecciona tu semestre o cargo.")
+                    if tiene == "Sí" and not titulo_rec.strip(): errores.append("Por favor indica el título del libro que has prestado.")
                     if errores:
                         for e in errores: st.error(e)
                     else:
@@ -631,7 +626,14 @@ Los datos de este formulario serán usados exclusivamente para la inscripción a
                         with st.spinner("Generando tus recomendaciones..."):
                             datos = cargar_datos()
                             du    = st.session_state.du
-                            st.session_state.recs = {"A":rec_A(du["facultad"],du["programa"],datos,carnet=du.get("carnet","")),"B":rec_B(du["facultad"],datos),"C":rec_C(du.get("titulo_recordado",""),datos)}
+                            if du["tiene_prestamos"] == "Sí":
+                                algoritmo = "C"
+                                lista = rec_C(du.get("titulo_recordado",""),datos)
+                            else:
+                                algoritmo = "A"
+                                lista = rec_A(du["facultad"],du["programa"],datos,carnet=du.get("carnet",""))
+                            st.session_state.du["algoritmo"] = algoritmo
+                            st.session_state.recs = {"lista":lista}
                         st.session_state.pantalla = "recomendaciones"; st.rerun()
 
         # ── RECOMENDACIONES ────────────────────────────────────────────────────
@@ -639,28 +641,15 @@ Los datos de este formulario serán usados exclusivamente para la inscripción a
             render_progress(2)
             du = st.session_state.du
             st.markdown("## Recomendaciones para ti")
-            st.markdown(f"Hemos generado tres listas de libros especialmente para ti. Explora, conoce más sobre cada opción y elige la que más te llame la atención en cada lista.")
-            st.caption("Haz clic en el corazón de tu libro favorito en cada lista para continuar.")
+            st.markdown("Hemos generado una lista de libros especialmente para ti. Explora cada opción y marca tus favoritos.")
+            st.caption("Haz clic en el corazón de los libros que más te llamen la atención.")
 
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown('<div style="font-size:13px;font-weight:700;color:#002147;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #002147;padding-bottom:8px;margin-bottom:12px;">Lista A</div>', unsafe_allow_html=True)
-                favs_A = render_libros(st.session_state.recs["A"],"A")
-            with col2:
-                st.markdown('<div style="font-size:13px;font-weight:700;color:#002147;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #002147;padding-bottom:8px;margin-bottom:12px;">Lista B</div>', unsafe_allow_html=True)
-                favs_B = render_libros(st.session_state.recs["B"],"B")
-            with col3:
-                st.markdown('<div style="font-size:13px;font-weight:700;color:#002147;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #002147;padding-bottom:8px;margin-bottom:12px;">Lista C</div>', unsafe_allow_html=True)
-                favs_C = render_libros(st.session_state.recs["C"],"C")
-
-            st.divider()
-            st.markdown("**¿Cuál lista te llamó más la atención?**")
-            lista_fav = st.radio("", ["Lista A","Lista B","Lista C","Ninguna me pareció relevante"], horizontal=True)
+            favs = render_libros(st.session_state.recs["lista"],"unica")
 
             c1, c2 = st.columns([1,4])
             with c2:
                 if st.button("Continuar", type="primary"):
-                    st.session_state.du.update({"favoritos_A":" | ".join(favs_A),"favoritos_B":" | ".join(favs_B),"favoritos_C":" | ".join(favs_C),"lista_favorita":lista_fav})
+                    st.session_state.du.update({"favoritos":" | ".join(favs)})
                     st.session_state.pantalla = "tam"; st.rerun()
 
         # ── TAM ────────────────────────────────────────────────────────────────
