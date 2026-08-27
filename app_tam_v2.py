@@ -689,25 +689,25 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
                         st.markdown(f'<div style="font-size:9px;color:#94A3B8;text-align:center;line-height:1.2;">{etq_likert[i]}</div>', unsafe_allow_html=True)
                 return st.session_state[key]
 
-            pu1 = fila_tam("Las recomendaciones fueron relevantes para mis intereses académicos.", "PU1")
-            pu2 = fila_tam("La información de los libros me ayudó a tomar una buena decisión.", "PU2")
-            pu3 = fila_tam("El sistema fue útil en mi vida académica.", "PU3")
-            pu4 = fila_tam("Usar este sistema aumentaría mi productividad académica.", "PU4")
+            pu1 = fila_tam("Usar este sistema mejora mi rendimiento académico.", "PU1")
+            pu2 = fila_tam("Usar este sistema aumenta mi productividad.", "PU2")
+            pu3 = fila_tam("Usar este sistema mejora mi efectividad en lo académico.", "PU3")
+            pu4 = fila_tam("Considero que el sistema es útil para mis intereses académicos.", "PU4")
 
-            peou1 = fila_tam("Mi interacción con el sistema fue clara y comprensible.", "PEOU1")
-            peou2 = fila_tam("Interactuar con el sistema no requirió mucho esfuerzo mental.", "PEOU2")
-            peou3 = fila_tam("El sistema me resultó fácil de usar.", "PEOU3")
-            peou4 = fila_tam("Me resultó fácil lograr que el sistema hiciera lo que quería.", "PEOU4")
+            peou1 = fila_tam("Mi interacción con el sistema es clara y entendible.", "PEOU1")
+            peou2 = fila_tam("Interactuar con el sistema no requiere mucho de mi esfuerzo mental.", "PEOU2")
+            peou3 = fila_tam("Encuentro que el sistema es fácil de usar.", "PEOU3")
+            peou4 = fila_tam("Encuentro que es fácil hacer que el sistema haga lo que yo quiero que haga.", "PEOU4")
 
-            rel1 = fila_tam("En mis actividades académicas, el uso del sistema es importante.", "REL1")
-            rel2 = fila_tam("En mis actividades académicas, el uso del sistema es relevante.", "REL2")
-            rel3 = fila_tam("El uso del sistema es pertinente para mis diversas actividades académicas.", "REL3")
+            rel1 = fila_tam("En mi vida académica, el uso del sistema es importante.", "REL1")
+            rel2 = fila_tam("En mi vida académica, el uso del sistema es relevante.", "REL2")
+            rel3 = fila_tam("El uso del sistema es pertinente para mis tareas relacionadas a mi vida académica.", "REL3")
 
             out1 = fila_tam("La calidad de las recomendaciones que obtengo del sistema es alta.", "OUT1")
             out2 = fila_tam("No tengo problema con la calidad de las recomendaciones del sistema.", "OUT2")
-            out3 = fila_tam("Considero que los resultados del sistema son excelentes.", "OUT3")
+            out3 = fila_tam("Califico los resultados del sistema como excelentes.", "OUT3")
 
-            bi1 = fila_tam("Asumiendo que tuviera acceso al sistema, tengo intención de usarlo.", "BI1")
+            bi1 = fila_tam("Asumiendo que tuviera acceso al sistema, tengo la intención de usarlo.", "BI1")
             bi2 = fila_tam("Dado que tuviera acceso al sistema, predigo que lo usaría.", "BI2")
             meses = st.selectbox("Planeo usar el sistema en los próximos:", ["1 mes","3 meses","6 meses","12 meses","Más de 12 meses","No planeo usarlo"], key="BI3")
 
