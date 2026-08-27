@@ -22,17 +22,25 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
 
+/* Nunca permitir scroll horizontal de la página: nada debe poder empujar el ancho
+   más allá del viewport (red de seguridad además del max-width de abajo). */
+html, body { overflow-x: hidden; max-width: 100vw; }
+
 /* Ocultar elementos de Streamlit */
 #MainMenu, footer, header, [data-testid="stToolbar"],
 [data-testid="stDecoration"], [data-testid="collapsedControl"] { display: none !important; }
 [data-testid="stSidebar"] { display: none !important; }
 .block-container { padding: 0 !important; max-width: 100% !important; }
-section[data-testid="stMain"] > div { padding: 40px !important; }
 
-/* Layout principal */
-.app-layout {
-    display: flex; min-height: 100vh;
+/* Contenedor real del contenido (Streamlit no permite envolverlo en un div propio
+   entre llamadas a st.markdown, ver CLAUDE.md): el límite de ancho y el centrado
+   se aplican acá directamente, no en .page-inner (que quedó sin usar). */
+section[data-testid="stMain"] > div {
+    padding: 40px !important;
+    max-width: 940px; margin: 0 auto !important;
+    width: 100%; overflow-x: hidden;
 }
+section[data-testid="stMain"] > div * { max-width: 100%; }
 
 /* Sidebar izquierda */
 .app-sidebar {
@@ -58,11 +66,16 @@ section[data-testid="stMain"] > div { padding: 40px !important; }
 /* Contenido principal */
 section[data-testid="stMain"] {
     margin-left: 220px; min-height: 100vh;
+    max-width: calc(100vw - 220px);
     background: #F8FAFC;
 }
-.page-inner {
-    max-width: 900px; margin: 0 auto;
-    padding: 40px 32px;
+
+/* Pantallas angostas (laptops pequeños/tablet): el sidebar fijo de 220px deja de
+   valer la pena, se colapsa para que el contenido tenga todo el ancho disponible. */
+@media (max-width: 900px) {
+    .app-sidebar { display: none; }
+    section[data-testid="stMain"] { margin-left: 0; max-width: 100vw; }
+    section[data-testid="stMain"] > div { padding: 24px !important; }
 }
 
 /* Progress bar */
@@ -717,6 +730,7 @@ Los datos de este formulario serán usados exclusivamente para la inscripción a
         # ── GRACIAS ────────────────────────────────────────────────────────────
         elif pantalla == "gracias":
             render_progress(4)
+            st.balloons()
             st.markdown("## ¡Gracias por tu participación!")
             st.markdown("Tus respuestas nos ayudan a construir un mejor sistema de recomendación bibliográfica para toda la comunidad Javeriana.")
             st.info("Este proyecto es desarrollado por estudiantes del programa de Ciencia de Datos de la Pontificia Universidad Javeriana — Bogotá.")
