@@ -582,7 +582,7 @@ Este ejercicio hace parte del trabajo de grado *"Diseño de un sistema de recome
 - El número de carnet es opcional y solo para control interno
 - Los datos podrán utilizarse en futuras iteraciones del proyecto
 
-Los datos de este formulario serán usados exclusivamente para la inscripción al evento. Puede consultar la Política de Protección de Datos Personales de la Universidad en la página web www.javeriana.edu.co. El canal de comunicación para revocar la autorización otorgada o solicitar la supresión de los datos es el correo electrónico: usodedatos@javeriana.edu.co
+Los datos de este formulario serán usados exclusivamente para este trabajo de grado. Puede consultar la Política de Protección de Datos Personales de la Universidad en la página web www.javeriana.edu.co. El canal de comunicación para revocar la autorización otorgada o solicitar la supresión de los datos es el correo electrónico: usodedatos@javeriana.edu.co
 
 *Al continuar autorizas el uso de la información ingresada bajo las condiciones descritas.*
                 """)
