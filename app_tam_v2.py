@@ -677,7 +677,7 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
             def fila_tam(label, key):
                 st.markdown(f"**{label}**")
                 if key not in st.session_state:
-                    st.session_state[key] = 1
+                    st.session_state[key] = None
                 cols = st.columns(7)
                 for i, col in enumerate(cols):
                     n = i+1
@@ -705,11 +705,11 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
 
             out1 = fila_tam("La calidad de las recomendaciones que obtengo del sistema es alta.", "OUT1")
             out2 = fila_tam("No tengo problema con la calidad de las recomendaciones del sistema.", "OUT2")
-            out3 = fila_tam("Califico los resultados del sistema como excelentes.", "OUT3")
+            out3 = fila_tam("Califico las recomendaciones del sistema como excelentes.", "OUT3")
 
-            bi1 = fila_tam("Asumiendo que tuviera acceso al sistema, tengo la intención de usarlo.", "BI1")
+            bi1 = fila_tam("Asumiendo que tuviera acceso al sistema, lo usaría.", "BI1")
             bi2 = fila_tam("Dado que tuviera acceso al sistema, predigo que lo usaría.", "BI2")
-            meses = st.selectbox("Planeo usar el sistema en los próximos:", ["1 mes","3 meses","6 meses","12 meses","Más de 12 meses","No planeo usarlo"], key="BI3")
+            meses = st.selectbox("Planeo usar el sistema en los próximos:", ["— Selecciona —","1 mes","3 meses","6 meses","12 meses","Más de 12 meses","No planeo usarlo"], key="BI3")
 
             st.session_state.du.update({"PU1":pu1,"PU2":pu2,"PU3":pu3,"PU4":pu4,"PEOU1":peou1,"PEOU2":peou2,"PEOU3":peou3,"PEOU4":peou4,"REL1":rel1,"REL2":rel2,"REL3":rel3,"OUT1":out1,"OUT2":out2,"OUT3":out3,"BI1":bi1,"BI2":bi2,"BI3":meses})
 
@@ -719,13 +719,17 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
                     st.session_state.pantalla = "recomendaciones"; st.rerun()
             with c2:
                 if st.button("Enviar respuestas", type="primary", use_container_width=True):
-                    with st.spinner("Guardando..."):
-                        try:
-                            sheet = conectar_sheets()
-                            guardar(sheet, st.session_state.du)
-                            st.session_state.pantalla = "gracias"; st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+                    respuestas_likert = [pu1,pu2,pu3,pu4,peou1,peou2,peou3,peou4,rel1,rel2,rel3,out1,out2,out3,bi1,bi2]
+                    if any(r is None for r in respuestas_likert) or meses == "— Selecciona —":
+                        st.error("Por favor responde todas las preguntas del cuestionario antes de continuar.")
+                    else:
+                        with st.spinner("Guardando..."):
+                            try:
+                                sheet = conectar_sheets()
+                                guardar(sheet, st.session_state.du)
+                                st.session_state.pantalla = "gracias"; st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {e}")
 
         # ── GRACIAS ────────────────────────────────────────────────────────────
         elif pantalla == "gracias":
