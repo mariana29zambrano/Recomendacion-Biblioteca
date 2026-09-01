@@ -101,6 +101,25 @@ section[data-testid="stMain"] {
 .prog-line { width: 60px; height: 2px; background: #E2E8F0; margin-bottom: 20px; }
 .prog-line.done { background: #002147; }
 
+/* Celular (la mayoría de participantes del estudio usan el teléfono): apilar
+   TODOS los layouts de columnas de Streamlit a ancho completo en vez de
+   encoger N columnas en ~350px — aplica por igual al formulario de 2 columnas,
+   a las 7 columnas de la escala Likert del TAM y a los pares de botones. */
+@media (max-width: 600px) {
+    section[data-testid="stMain"] > div { padding: 16px !important; }
+    div[data-testid="stHorizontalBlock"] { flex-direction: column !important; }
+    div[data-testid="stColumn"] { width: 100% !important; flex: 1 1 100% !important; min-width: 0 !important; }
+    div[data-testid="stElementContainer"] { width: 100% !important; }
+    div[data-testid="stButton"] { width: 100% !important; }
+    div[data-testid="stButton"] > button { width: 100% !important; padding: 12px 16px !important; min-height: 44px; }
+    .progress-wrap { gap: 0; margin-bottom: 24px; }
+    .prog-step { min-width: 48px; }
+    .prog-circle { width: 26px; height: 26px; font-size: 11px; }
+    .prog-label { font-size: 9px; }
+    .prog-line { width: 20px; margin-bottom: 16px; }
+    .book-heart { font-size: 24px; padding: 8px 10px; }
+}
+
 /* Tarjeta contenedora */
 .card {
     background: white; border-radius: 16px;
@@ -424,14 +443,18 @@ def cargar_datos():
             "vec":vec,"X":X,"book_to_row":book_to_row}
 
 # ── Recomendaciones ────────────────────────────────────────────────────────────
-def rec_A(fac,prog,datos,n=TOP_N,carnet=""):
+def rec_A(fac,prog,datos,n=TOP_N,carnet="",perfil="",genero=""):
     """Modelo 1 (TF-IDF híbrido) — score = W_HIST*historial + W_PERF*perfil + W_POP*popularidad,
     pesos óptimos de la sección 10.1 del notebook (gs_pesos_m1_heatmap.png).
-    score_perfil usa facultad+programa como proxy del perfil académico: el notebook lo construye
-    desde un archivo "BD Digitales" que no forma parte de este proyecto. score_historial solo
-    aporta si el carnet ingresado coincide con un "ID Usuario" real en Prestamos_completo.csv
-    (poco probable para un participante nuevo/anónimo del estudio); si no hay coincidencia,
-    su contribución es naturalmente cero y el score se apoya en perfil + popularidad.
+    score_perfil usa facultad+programa+perfil(rol)+género como proxy del profile_text real del
+    notebook (construir_perfil): ahí se arma desde el historial de préstamos —
+    perfil_prestamo+programa_prestamo+facultad_prestamo+género+tipo_usuario+programa_digital+
+    facultad_digital+nivel_formación (los últimos 4 salen de "BD Digitales", que no está en este
+    repo). Acá se usa lo que el participante escribe en el formulario en su lugar, ya que el
+    carnet rara vez coincide con un historial real. score_historial solo aporta si el carnet
+    ingresado coincide con un "ID Usuario" real en Prestamos_completo.csv (poco probable para un
+    participante nuevo/anónimo del estudio); si no hay coincidencia, su contribución es
+    naturalmente cero y el score se apoya en perfil + popularidad.
     La popularidad usa el programa (carrera) del usuario, filtrada a estudiantes; si ese
     programa no tiene préstamos registrados, cae a popularidad por facultad."""
     obras=datos["obras"]; pop_fac=datos["pop_fac"]; pop_prog=datos["pop_prog"]
@@ -449,7 +472,7 @@ def rec_A(fac,prog,datos,n=TOP_N,carnet=""):
             uv=csr_matrix(uv/pesos.sum())
             score_hist=cosine_similarity(uv,X).ravel()
 
-    txt=re.sub(r"[^a-z0-9\s]"," ",unidecode(f"{fac} {prog}".lower())).strip()
+    txt=re.sub(r"[^a-z0-9\s]"," ",unidecode(f"{fac} {prog} {perfil} {genero}".lower())).strip()
     score_perfil=np.zeros(X.shape[0])
     if txt: score_perfil=cosine_similarity(vec.transform([txt]),X).ravel()
 
@@ -644,7 +667,7 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
                                 lista = rec_C(du.get("titulo_recordado",""),datos)
                             else:
                                 algoritmo = "A"
-                                lista = rec_A(du["facultad"],du["programa"],datos,carnet=du.get("carnet",""))
+                                lista = rec_A(du["facultad"],du["programa"],datos,carnet=du.get("carnet",""),perfil=du.get("perfil",""),genero=du.get("genero",""))
                             st.session_state.du["algoritmo"] = algoritmo
                             st.session_state.recs = {"lista":lista}
                         st.session_state.pantalla = "recomendaciones"; st.rerun()
