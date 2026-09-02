@@ -1,12 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import json
 import re
 import base64
 from datetime import datetime
 from unidecode import unidecode
-from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import csr_matrix
 import gspread
@@ -222,15 +220,10 @@ SHEET_ID   = "1TxN5DbrjMhGoMaLQOvSXB2uGuwLDSBbOfVHyvJ3Bv1Q"
 SHEET_NAME = "Hoja 1"
 TOP_N      = 10
 
-COL_INSTANCE_ID = "Instances - Instance UUID"
 COL_TITLE       = "Instances - Index title"
-COL_CONTRIBUTORS= "Instances - Contributors"
 COL_SUBJECTS    = "Instances - Subject headings"
-COL_PUBLICATION = "Instances - Publication"
 COL_CALL_NUMBER = "Items - Item call number"
 COL_MTYPE       = "Material type - Name"
-COL_LOCATION    = "Effective location - Name"
-COL_BARCODE     = "Items - Barcode"
 
 # Pesos del score híbrido del Modelo 1 (óptimo empírico de la sección 10.1 del
 # notebook, gs_pesos_m1_heatmap.png: mejor Recall@10 y NDCG@10 simultáneamente
@@ -238,16 +231,6 @@ COL_BARCODE     = "Items - Barcode"
 W_HIST = 0.40
 W_PERF = 0.20
 W_POP  = 0.40
-LOAN_USER    = "ID Usuario"
-LOAN_BARCODE = "Item barcode"
-LOAN_DATE    = "Date"
-LOAN_ACTION  = "Circ action"
-LOAN_PROFILE = "Perfil"
-LOAN_PROGRAM = "Programa"
-LOAN_FACULTY = "Facultad"
-PERFIL_ESTUDIANTE = "Bogota Estudiantes"
-
-ACCIONES_VALIDAS = ["Checked out","Checked out through override","Renewed","Renewed through override"]
 
 FACULTADES_PROGRAMAS = {
     "Facultad de Arquitectura y Diseño":["Arquitectura","Diseño Industrial","Maestría en Diseño para la Innovación de Productos y Servicios","Maestría en Hábitat Sustentable","Maestría en Patrimonio Cultural y Territorio","Maestría en Planeación Urbana y Regional","Especialización en Gerencia de Proyectos de Diseño"],
@@ -272,26 +255,6 @@ FACULTADES_PROGRAMAS = {
 
 PERFILES = ["Estudiante de pregrado","Estudiante de posgrado — Especialización","Estudiante de posgrado — Maestría","Estudiante de posgrado — Doctorado","Profesor/a","Personal administrativo","Otro"]
 CARGOS   = ["Profesor titular","Profesor asociado","Profesor asistente","Instructor","Profesor de cátedra","Otro"]
-MAPEO_FAC = {
-    "FACULTAD DE ARQUITECTURA Y DISENO":"Facultad de Arquitectura y Diseño","DECANATURA DE FACULTAD DE ARQUITECTURA Y DISENO":"Facultad de Arquitectura y Diseño",
-    "FACULTAD DE ARTES":"Facultad de Artes","DECANATURA DE FACULTAD DE ARTES":"Facultad de Artes",
-    "FACULTAD DE CIENCIAS":"Facultad de Ciencias","DECANATURA DE FACULTAD DE CIENCIAS":"Facultad de Ciencias",
-    "FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS":"Facultad de Ciencias Económicas y Administrativas","DECANATURA DE FACULTAD DE CIENCIAS ECONOMICAS Y ADMINISTRATIVAS":"Facultad de Ciencias Económicas y Administrativas",
-    "FACULTAD DE CIENCIAS JURIDICAS":"Facultad de Ciencias Jurídicas","DECANATURA DE FACULTAD DE CIENCIAS JURIDICAS":"Facultad de Ciencias Jurídicas",
-    "FACULTAD DE CIENCIAS POLITICAS Y RELACIONES INTERNACIONALES":"Facultad de Ciencias Políticas y Relaciones Internacionales","DECANATURA DE FACULTAD DE CIENCIAS POLITICAS Y RELACIONES INTERNACIONALES":"Facultad de Ciencias Políticas y Relaciones Internacionales",
-    "FACULTAD DE CIENCIAS SOCIALES":"Facultad de Ciencias Sociales","DECANATURA DE FACULTAD DE CIENCIAS SOCIALES":"Facultad de Ciencias Sociales",
-    "FACULTAD DE COMUNICACION Y LENGUAJE":"Facultad de Comunicación y Lenguaje","DECANATURA DE FACULTAD DE COMUNICACION Y LENGUAJE":"Facultad de Comunicación y Lenguaje",
-    "FACULTAD DE DERECHO CANONICO":"Facultad de Derecho Canónico","DECANATURA DE FACULTAD DE DERECHO CANONICO":"Facultad de Derecho Canónico",
-    "FACULTAD DE EDUCACION":"Facultad de Educación","DECANATURA DE FACULTAD DE EDUCACION":"Facultad de Educación",
-    "FACULTAD DE ENFERMERIA":"Facultad de Enfermería","DECANATURA DE FACULTAD DE ENFERMERIA":"Facultad de Enfermería",
-    "FACULTAD DE ESTUDIOS AMBIENTALES Y RURALES":"Facultad de Estudios Ambientales y Rurales","DECANATURA DE FACULTAD DE ESTUDIOS AMBIENTALES Y RURALES":"Facultad de Estudios Ambientales y Rurales",
-    "FACULTAD DE FILOSOFIA":"Facultad de Filosofía","DECANATURA DE FACULTAD DE FILOSOFIA":"Facultad de Filosofía",
-    "FACULTAD DE INGENIERIA":"Facultad de Ingeniería","DECANATURA DE FACULTAD DE INGENIERIA":"Facultad de Ingeniería",
-    "FACULTAD DE MEDICINA":"Facultad de Medicina","DECANATURA DE FACULTAD DE MEDICINA":"Facultad de Medicina",
-    "FACULTAD DE ODONTOLOGIA":"Facultad de Odontología","DECANATURA DE FACULTAD DE ODONTOLOGIA":"Facultad de Odontología",
-    "FACULTAD DE PSICOLOGIA":"Facultad de Psicología","DECANATURA DE FACULTAD DE PSICOLOGIA":"Facultad de Psicología",
-    "FACULTAD DE TEOLOGIA":"Facultad de Teología","DECANATURA DE FACULTAD DE TEOLOGIA":"Facultad de Teología",
-}
 
 # ── Google Sheets ──────────────────────────────────────────────────────────────
 @st.cache_resource
@@ -336,115 +299,44 @@ def nt(t):
     t=str(t).lower(); t=unidecode(t); t=re.sub(r"[^a-z0-9\s]"," ",t)
     return re.sub(r"\s+"," ",t).strip()
 
-# IDs de Google Drive de los CSV pesados (no versionados en el repo, ver CLAUDE.md).
-ID_COLECCION = "1_qYRsiK9njZnciuQERVaLo22dGnt32s6"
-ID_PRESTAMOS = "1-TXpnJlUsGPT7spJ4ZFUQcsxRa21U68n"
+# IDs de Google Drive de los artefactos PRECOMPUTADOS (ver scripts/precompute_cache.py
+# y scripts/subir_cache_drive.py). Antes la app descargaba los CSV crudos (470MB+64MB)
+# y los reprocesaba —parseo JSON fila por fila, TF-IDF de 329k obras— en cada arranque
+# en frío: varios minutos y picos de RAM que hacían caer el proceso en el plan gratuito
+# de Streamlit Cloud (1GB) con varios usuarios simultáneos. Ahora se descargan los
+# resultados ya calculados (Parquet + npz + joblib) y solo se cargan, sin reprocesar.
+# Si cambian los CSV fuente, hay que correr esos dos scripts de nuevo y actualizar
+# estos IDs.
+ID_ARTEFACTOS = {
+    "inter.parquet":            "1jYmvk4GNJE9fyhtUczZv9sejRdT9GmsA",
+    "obras.parquet":            "1TZdB6cCAZuIJM_p1OoJqf_NAcmlFy_jT",
+    "pop_fac.parquet":          "1oxdb8vco8PCIBtVuPo8RWKJ47K7GcJ34",
+    "pop_gen.parquet":          "1smwjIGDzIj8_Q5qq_kfiWVCPyq3vRq9Y",
+    "pop_prog.parquet":         "1yZLim_SvPyp5mgPq4F4x3mbCOKVXvxs9",
+    "tfidf_matrix.npz":         "1FsyQTssDf6h6t6cL9MYdBG4k30idYUu0",
+    "tfidf_vectorizer.joblib":  "13nR2Y6NT4LMe4v6mF39BfI2-EAFVDrnS",
+}
 
 # ── Carga de datos ─────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner="Cargando la colección bibliográfica...")
 def cargar_datos():
-    import warnings, os, gdown
-    warnings.filterwarnings("ignore")
+    import os, gdown, joblib
+    from scipy import sparse
 
-    path_col = "data/Biblioteca_General.csv"
-    path_pre = "data/Prestamos_completo.csv"
-    os.makedirs("data", exist_ok=True)
+    os.makedirs("cache", exist_ok=True)
+    for nombre, file_id in ID_ARTEFACTOS.items():
+        ruta = f"cache/{nombre}"
+        if not os.path.exists(ruta):
+            gdown.download(f"https://drive.google.com/uc?id={file_id}", ruta, quiet=False)
 
-    if not os.path.exists(path_col):
-        gdown.download(f"https://drive.google.com/uc?id={ID_COLECCION}", path_col, quiet=False)
-    if not os.path.exists(path_pre):
-        gdown.download(f"https://drive.google.com/uc?id={ID_PRESTAMOS}", path_pre, quiet=False)
-
-    col=pd.read_csv(path_col,low_memory=False)
-    pre=pd.read_csv(path_pre,low_memory=False)
-
-    def contrib(v):
-        try:
-            p=json.loads(str(v))
-            if isinstance(p,list): return " ".join([i.get("name","") for i in p if isinstance(i,dict)])
-        except: pass
-        return str(v) if v and str(v) not in ["","nan"] else ""
-    def publication_text(v):
-        if not v or str(v).strip() in ["","nan"]: return ""
-        try:
-            p=json.loads(str(v))
-            if isinstance(p,list):
-                parts=[]
-                for item in p:
-                    if isinstance(item,dict): parts.extend([str(x) for x in item.values() if x])
-                return " ".join(parts)
-        except: pass
-        return str(v)
-    def ju(s):
-        vals=s.dropna().astype(str).unique()
-        return " ; ".join([v for v in vals if v.strip() not in ["","nan"]][:20])
-
-    col[COL_BARCODE]=col[COL_BARCODE].astype(str).str.strip()
-    col[COL_INSTANCE_ID]=col[COL_INSTANCE_ID].astype(str)
-    for c in [COL_TITLE,COL_SUBJECTS,COL_PUBLICATION,COL_CALL_NUMBER,COL_MTYPE,COL_LOCATION]:
-        col[c]=col[c].fillna("").astype(str)
-    col[COL_CONTRIBUTORS]=col[COL_CONTRIBUTORS].fillna("").astype(str)
-    col["contributors_text"]=col[COL_CONTRIBUTORS].apply(contrib)
-    col["publication_text"]=col[COL_PUBLICATION].apply(publication_text)
-
-    obras=(col.groupby(COL_INSTANCE_ID)
-           .agg({COL_TITLE:"first",COL_SUBJECTS:ju,"publication_text":ju,"contributors_text":ju,
-                 COL_CALL_NUMBER:"first",COL_MTYPE:"first",COL_LOCATION:"first"})
-           .reset_index().rename(columns={COL_INSTANCE_ID:"instance_id"}))
-    b2i=(col[[COL_BARCODE,COL_INSTANCE_ID]].dropna().drop_duplicates()
-         .set_index(COL_BARCODE)[COL_INSTANCE_ID].to_dict())
-
-    sw_es=["de","la","el","los","las","y","en","del","a","por","para","con","una","un","al","se","su","sus","como","mas","o","e","que","es","sobre","entre","sin","edicion","vol","ed"]
-    sw_pt=["de","da","do","das","dos","e","em","um","uma","para","com","por","que","se","na","no","nas","nos","ao","aos"]
-    sw_fr=["de","la","le","les","et","en","du","des","un","une","par","sur","dans","avec","pour","au","aux"]
-    sw=list(set(sw_es+sw_pt+sw_fr+list(ENGLISH_STOP_WORDS)))
-    obras["subjects_clean"]=obras[COL_SUBJECTS].str.replace(";", " ", regex=False)
-    obras["content_text"]=(obras[COL_TITLE]+" "+obras["subjects_clean"]+" "+obras["subjects_clean"]+" "+
-                            obras["contributors_text"]+" "+obras["publication_text"]+" "+
-                            obras[COL_MTYPE]+" "+obras[COL_LOCATION]).apply(nt)
-    vec=TfidfVectorizer(max_features=50000,ngram_range=(1,2),min_df=2,max_df=0.85,stop_words=sw)
-    X=vec.fit_transform(obras["content_text"])
+    obras   = pd.read_parquet("cache/obras.parquet")
+    inter   = pd.read_parquet("cache/inter.parquet")
+    pop_fac = pd.read_parquet("cache/pop_fac.parquet")
+    pop_prog= pd.read_parquet("cache/pop_prog.parquet")
+    pop_gen = pd.read_parquet("cache/pop_gen.parquet")
+    X       = sparse.load_npz("cache/tfidf_matrix.npz")
+    vec     = joblib.load("cache/tfidf_vectorizer.joblib")
     book_to_row=pd.Series(obras.index.values,index=obras["instance_id"]).to_dict()
-
-    pre[LOAN_USER]=pre[LOAN_USER].astype(str).str.strip()
-    pre[LOAN_BARCODE]=pre[LOAN_BARCODE].astype(str).str.strip()
-    pre[LOAN_DATE]=pd.to_datetime(pre[LOAN_DATE],errors="coerce")
-    pre=pre.dropna(subset=[LOAN_DATE])
-    pre=pre[pre[LOAN_ACTION].isin(ACCIONES_VALIDAS)].copy()
-    pre["instance_id"]=pre[LOAN_BARCODE].map(b2i)
-    pre=pre.dropna(subset=["instance_id"]).copy()
-    mf=pre[LOAN_DATE].max()
-    pre["dias"]=(mf-pre[LOAN_DATE]).dt.days.fillna(730)
-    pre["peso_recencia"]=np.exp(-pre["dias"]/180)
-    pre["peso_base"]=np.where(pre[LOAN_ACTION].str.contains("Renewed",case=False),0.5,1.0)
-    pre["peso_evento"]=pre["peso_base"]*(1+pre["peso_recencia"])
-    pre[LOAN_FACULTY]=pre[LOAN_FACULTY].fillna("").astype(str)
-    pre[LOAN_PROFILE]=pre[LOAN_PROFILE].fillna("").astype(str)
-    pre[LOAN_PROGRAM]=pre[LOAN_PROGRAM].fillna("").astype(str)
-
-    inter=(pre.rename(columns={LOAN_USER:"user_id",LOAN_BARCODE:"barcode",LOAN_FACULTY:"facultad",
-                                LOAN_PROFILE:"perfil_prestamo",LOAN_PROGRAM:"programa_prestamo"})
-           .groupby(["user_id","instance_id"])
-           .agg(peso=("peso_evento","sum"),n=("barcode","count"),facultad=("facultad","first"),
-                perfil_prestamo=("perfil_prestamo","first"),programa_prestamo=("programa_prestamo","first"))
-           .reset_index())
-    inter["peso"]=np.log1p(inter["peso"])
-    inter["facultad_clean"]=inter["facultad"].map(MAPEO_FAC).fillna("")
-    inter["programa_clean"]=inter["programa_prestamo"].apply(nt)
-
-    pop_fac=(inter.groupby(["facultad_clean","instance_id"])
-             .agg(n_usuarios=("user_id","nunique")).reset_index())
-    pop_fac["score_pop"]=np.log1p(pop_fac["n_usuarios"])
-    pop_gen=(inter.groupby("instance_id")["user_id"].nunique()
-             .reset_index(name="n").sort_values("n",ascending=False))
-
-    # Popularidad por programa (carrera), solo estudiantes, para no mezclar prestamos de
-    # profesores/administrativos/staff en la senal de "que leen mis companeros de programa".
-    # Fallback a pop_fac se resuelve en rec_A cuando el programa no tiene senal propia.
-    pop_prog=(inter[inter["perfil_prestamo"]==PERFIL_ESTUDIANTE]
-              .groupby(["programa_clean","instance_id"])
-              .agg(n_usuarios=("user_id","nunique")).reset_index())
-    pop_prog["score_pop"]=np.log1p(pop_prog["n_usuarios"])
 
     return {"obras":obras,"inter":inter,"pop_fac":pop_fac,"pop_prog":pop_prog,"pop_gen":pop_gen,
             "vec":vec,"X":X,"book_to_row":book_to_row}

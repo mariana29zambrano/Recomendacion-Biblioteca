@@ -4,6 +4,7 @@ credentials.json
 
 # Datos pesados — se descargan de Google Drive en tiempo de ejecución (ver cargar_datos())
 data/
+cache/
 
 # Entorno / caches de Python
 venv/

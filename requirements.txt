@@ -7,3 +7,5 @@ scipy==1.18.0
 gspread==6.2.1
 google-auth==2.56.3
 gdown==6.1.0
+joblib==1.5.3
+pyarrow==24.0.0
