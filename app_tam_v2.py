@@ -22,6 +22,13 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
 
+/* La app está diseñada solo para tema claro (ver .streamlit/config.toml).
+   color-scheme:light evita que navegadores con "forzar modo oscuro" (común en
+   Android) reinterpreten los colores y vuelvan invisible el texto sin estilo
+   propio (títulos, labels de campos, radios, expanders) sobre nuestros fondos
+   claros. */
+:root { color-scheme: light; }
+
 /* Nunca permitir scroll horizontal de la página: nada debe poder empujar el ancho
    más allá del viewport (red de seguridad además del max-width de abajo). */
 html, body { overflow-x: hidden; max-width: 100vw; }
