@@ -6,6 +6,10 @@ credentials.json
 data/
 cache/
 
+# Datos sensibles de la tercera iteración (directorio institucional completo +
+# histórico de préstamos) — nunca debe subirse al repo
+tercera_iteracion/
+
 # Entorno / caches de Python
 venv/
 __pycache__/

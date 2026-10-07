@@ -122,69 +122,7 @@ section[data-testid="stMain"] {
     .prog-circle { width: 26px; height: 26px; font-size: 11px; }
     .prog-label { font-size: 9px; }
     .prog-line { width: 20px; margin-bottom: 16px; }
-    .book-heart { font-size: 24px; padding: 8px 10px; }
 }
-
-/* Tarjeta contenedora */
-.card {
-    background: white; border-radius: 16px;
-    padding: 32px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    margin-bottom: 20px;
-}
-
-/* Botones */
-.btn-primary {
-    background: #002147; color: white; border: none;
-    padding: 12px 32px; border-radius: 8px; font-size: 14px;
-    font-weight: 600; cursor: pointer; float: right;
-}
-.btn-secondary {
-    background: white; color: #374151; border: 1.5px solid #E2E8F0;
-    padding: 12px 24px; border-radius: 8px; font-size: 14px;
-    font-weight: 500; cursor: pointer;
-}
-
-/* Libros */
-.book-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 1px solid #F1F5F9;
-}
-.book-row:last-child { border-bottom: none; }
-.book-info { flex: 1; }
-.book-title { font-size: 13px; font-weight: 600; color: #1E293B; margin-bottom: 2px; }
-.book-author { font-size: 12px; color: #64748B; }
-.book-heart { font-size: 20px; cursor: pointer; color: #CBD5E1; padding: 4px 8px; }
-.book-heart.liked { color: #EF4444; }
-
-/* Lista header */
-.lista-col-header {
-    font-size: 13px; font-weight: 700; color: #002147;
-    text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 12px; padding-bottom: 8px;
-    border-bottom: 2px solid #002147;
-}
-
-/* Tabla de cuestionario */
-.tam-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.tam-table th {
-    text-align: center; font-size: 11px; font-weight: 600;
-    color: #64748B; padding: 6px 4px;
-    background: #F8FAFC; border-bottom: 1px solid #E2E8F0;
-}
-.tam-table td {
-    padding: 12px 4px; border-bottom: 1px solid #F1F5F9;
-    font-size: 13px; vertical-align: middle;
-}
-.tam-table td:first-child {
-    color: #374151; font-weight: 500; padding-right: 16px; width: 55%;
-}
-.tam-table td { text-align: center; }
-.tam-section-title {
-    font-size: 14px; font-weight: 700; color: #002147;
-    margin: 24px 0 4px 0; border-left: 3px solid #002147;
-    padding-left: 10px;
-}
-.tam-section-caption { font-size: 11px; color: #94A3B8; margin-bottom: 8px; }
 
 /* Input fields */
 .stTextInput > div > div > input {
@@ -227,10 +165,23 @@ COL_MTYPE       = "Material type - Name"
 
 # Pesos del score híbrido del Modelo 1 (óptimo empírico de la sección 10.1 del
 # notebook, gs_pesos_m1_heatmap.png: mejor Recall@10 y NDCG@10 simultáneamente
-# con w_pop=0.4 fijo y w_hist=0.4/w_perf=0.2 sobre el remanente).
+# con w_pop=0.4 fijo y w_hist=0.4/w_perf=0.2 sobre el remanente). Usado por
+# rec_A (flujo manual, datos de la iteración 2 -- inter/pop_fac/pop_prog).
 W_HIST = 0.40
 W_PERF = 0.20
 W_POP  = 0.40
+
+# Pesos recalibrados para rec_A_v3 (tercera iteración: directorio institucional
+# completo + histórico extendido, ya filtrado a Bogotá -- ver
+# scripts/grid_search_pesos_v3.py y gs_pesos_m1_v3_heatmap.png). No son los
+# mismos de arriba a propósito: se calibraron sobre una matriz de interacciones
+# mucho más densa (score_historial real para ~97% de los participantes en vez
+# de casi siempre 0), así que el punto óptimo es distinto -- Burke (1999) es
+# explícito en que los pesos de un híbrido deben calibrarse empíricamente por
+# dataset, no reusarse de una iteración con datos muy distintos.
+W_HIST_V3 = 0.50
+W_PERF_V3 = 0.30
+W_POP_V3  = 0.20
 
 FACULTADES_PROGRAMAS = {
     "Facultad de Arquitectura y Diseño":["Arquitectura","Diseño Industrial","Maestría en Diseño para la Innovación de Productos y Servicios","Maestría en Hábitat Sustentable","Maestría en Patrimonio Cultural y Territorio","Maestría en Planeación Urbana y Regional","Especialización en Gerencia de Proyectos de Diseño"],
@@ -277,12 +228,12 @@ def conectar_sheets():
         # update() en vez de append_row(): escribe directo en la fila 1, evitando la
         # condicion de carrera donde append_row (header) y el primer guardar() (dato)
         # calculan "siguiente fila vacia" casi al tiempo y ambos aterrizan en la fila 1.
-        sheet.update([["timestamp","carnet","edad","perfil","facultad","programa","semestre_cargo","genero","tiene_prestamos","titulo_recordado","algoritmo","favoritos","PU1","PU2","PU3","PU4","PEOU1","PEOU2","PEOU3","PEOU4","REL1","REL2","REL3","OUT1","OUT2","OUT3","BI1","BI2","BI3"]], "A1")
+        sheet.update([["timestamp","edad","perfil","facultad","programa","semestre_cargo","genero","tiene_prestamos","titulo_recordado","algoritmo","favoritos","PU1","PU2","PU3","PU4","PEOU1","PEOU2","PEOU3","PEOU4","REL1","REL2","REL3","OUT1","OUT2","OUT3","BI1","BI2","BI3"]], "A1")
     return sheet
 
 def guardar(sheet, d):
     sheet.append_row([datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        d.get("carnet",""),d.get("edad",""),d.get("perfil",""),d.get("facultad",""),d.get("programa",""),
+        d.get("edad",""),d.get("perfil",""),d.get("facultad",""),d.get("programa",""),
         d.get("semestre_cargo",""),d.get("genero",""),d.get("tiene_prestamos",""),d.get("titulo_recordado",""),
         d.get("algoritmo",""),d.get("favoritos",""),
         d.get("PU1",""),d.get("PU2",""),d.get("PU3",""),d.get("PU4",""),
@@ -317,6 +268,21 @@ ID_ARTEFACTOS = {
     "tfidf_vectorizer.joblib":  "13nR2Y6NT4LMe4v6mF39BfI2-EAFVDrnS",
 }
 
+# Artefactos de la TERCERA iteracion (scripts/precompute_cache_v3.py), generados
+# localmente a partir del directorio institucional completo + historico extendido
+# (tercera_iteracion/, nunca subido al repo). Si en el futuro cambia la fuente y
+# hay que regenerarlos, subir los nuevos a Drive y actualizar los IDs de abajo --
+# si alguno llegara a faltar, cargar_datos() sigue funcionando igual (usa lo que
+# ya exista en cache/ localmente) y la app simplemente no ofrece el flujo por
+# "ID de estudiante" hasta que estén todos.
+ID_ARTEFACTOS_V3 = {
+    "inter_v3.parquet":         "1mhBWHlufLAqvxasgC-qLBCUz64r3UaQ5",
+    "perfil_v3.parquet":        "1sYKEjs9ZfH0_lvELCf7loiGB4kNE0yk_",
+    "pop_fac_v3.parquet":       "1xLfpKjevyiGqS5cB7a-iGPEiHpMxvfAs",
+    "pop_prog_v3.parquet":      "142QJdczlFAa2nk7_baU7GfrFB7gZnjag",
+    "estudiante_lookup.parquet":"1ww4n8NEYN3Z0vOd-TOa2_S7eYDcbCcQP",
+}
+
 # ── Carga de datos ─────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner="Cargando la colección bibliográfica...")
 def cargar_datos():
@@ -328,6 +294,10 @@ def cargar_datos():
         ruta = f"cache/{nombre}"
         if not os.path.exists(ruta):
             gdown.download(f"https://drive.google.com/uc?id={file_id}", ruta, quiet=False)
+    for nombre, file_id in ID_ARTEFACTOS_V3.items():
+        ruta = f"cache/{nombre}"
+        if not os.path.exists(ruta) and file_id:
+            gdown.download(f"https://drive.google.com/uc?id={file_id}", ruta, quiet=False)
 
     obras   = pd.read_parquet("cache/obras.parquet")
     inter   = pd.read_parquet("cache/inter.parquet")
@@ -338,8 +308,22 @@ def cargar_datos():
     vec     = joblib.load("cache/tfidf_vectorizer.joblib")
     book_to_row=pd.Series(obras.index.values,index=obras["instance_id"]).to_dict()
 
-    return {"obras":obras,"inter":inter,"pop_fac":pop_fac,"pop_prog":pop_prog,"pop_gen":pop_gen,
-            "vec":vec,"X":X,"book_to_row":book_to_row}
+    datos = {"obras":obras,"inter":inter,"pop_fac":pop_fac,"pop_prog":pop_prog,"pop_gen":pop_gen,
+             "vec":vec,"X":X,"book_to_row":book_to_row}
+
+    # Artefactos v3: opcionales -- si no estan disponibles (todavia no
+    # desplegados), el flujo por "ID de estudiante" simplemente no se activa
+    # y la app sigue funcionando con el flujo manual de siempre.
+    v3_completo = all(os.path.exists(f"cache/{n}") for n in ID_ARTEFACTOS_V3)
+    datos["v3_disponible"] = v3_completo
+    if v3_completo:
+        datos["inter_v3"]    = pd.read_parquet("cache/inter_v3.parquet")
+        datos["perfil_v3"]   = pd.read_parquet("cache/perfil_v3.parquet").set_index("id")
+        datos["pop_fac_v3"]  = pd.read_parquet("cache/pop_fac_v3.parquet")
+        datos["pop_prog_v3"] = pd.read_parquet("cache/pop_prog_v3.parquet")
+        datos["estudiante_lookup"] = pd.read_parquet("cache/estudiante_lookup.parquet")
+
+    return datos
 
 # ── Recomendaciones ────────────────────────────────────────────────────────────
 def rec_A(fac,prog,datos,n=TOP_N,carnet="",perfil="",genero=""):
@@ -350,10 +334,11 @@ def rec_A(fac,prog,datos,n=TOP_N,carnet="",perfil="",genero=""):
     perfil_prestamo+programa_prestamo+facultad_prestamo+género+tipo_usuario+programa_digital+
     facultad_digital+nivel_formación (los últimos 4 salen de "BD Digitales", que no está en este
     repo). Acá se usa lo que el participante escribe en el formulario en su lugar, ya que el
-    carnet rara vez coincide con un historial real. score_historial solo aporta si el carnet
-    ingresado coincide con un "ID Usuario" real en Prestamos_completo.csv (poco probable para un
-    participante nuevo/anónimo del estudio); si no hay coincidencia, su contribución es
-    naturalmente cero y el score se apoya en perfil + popularidad.
+    Este es el fallback cuando no se encuentra un "ID de estudiante" real (ver
+    buscar_id_interno/rec_A_v3 mas abajo): el formulario ya no pide carnet, asi que
+    el parametro `carnet` queda en "" salvo que se llame manualmente -- score_historial
+    siempre es cero aqui y el score se apoya en perfil + popularidad. Se conserva el
+    parametro para no perder la replicacion fiel del Modelo 1 del notebook.
     La popularidad usa el programa (carrera) del usuario, filtrada a estudiantes; si ese
     programa no tiene préstamos registrados, cae a popularidad por facultad."""
     obras=datos["obras"]; pop_fac=datos["pop_fac"]; pop_prog=datos["pop_prog"]
@@ -403,12 +388,73 @@ def rec_C(titulo,datos,n=TOP_N):
     cand=obras.copy(); cand["score"]=sims
     return cand.sort_values("score",ascending=False).iloc[1:n+1][["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
 
+def buscar_id_interno(id_estudiante, datos):
+    """Traduce el 'ID de estudiante' que escribe el participante al id interno
+    (UUID) usando cache/estudiante_lookup.parquet (solo dos columnas: id_estudiante,
+    id -- ver scripts/precompute_cache_v3.py). Devuelve None si no hay match o si
+    los artefactos v3 no estan disponibles; el id_estudiante NUNCA se guarda en
+    session_state mas alla de esta busqueda puntual ni se persiste en la hoja."""
+    if not datos.get("v3_disponible") or not id_estudiante or not str(id_estudiante).strip():
+        return None
+    lookup = datos["estudiante_lookup"]
+    fila = lookup[lookup["id_estudiante"] == str(id_estudiante).strip()]
+    return fila["id"].iloc[0] if not fila.empty else None
+
+def rec_A_v3(id_interno, datos, n=TOP_N):
+    """Equivalente de rec_A pero con datos reales de la tercera iteracion: historial
+    real de prestamos (inter_v3), perfil institucional real en vez de lo que el
+    participante escribe a mano (perfil_v3: facultad/programa normalizados +
+    tipo de usuario), y popularidad ya escopada a Bogota (pop_fac_v3/pop_prog_v3).
+    Pesos W_HIST_V3/W_PERF_V3/W_POP_V3 (0.50/0.30/0.20), recalibrados con
+    scripts/grid_search_pesos_v3.py sobre esta matriz de interacciones mucho mas
+    densa que la de la iteracion 2 -- NDCG@10=0.0368, mejor que historial solo
+    (0.0264) o popularidad sola (0.0240). Ver gs_pesos_m1_v3_heatmap.png."""
+    obras=datos["obras"]; vec=datos["vec"]; X=datos["X"]; book_to_row=datos["book_to_row"]
+    inter_v3=datos["inter_v3"]; perfil_v3=datos["perfil_v3"]
+    pop_fac_v3=datos["pop_fac_v3"]; pop_prog_v3=datos["pop_prog_v3"]
+
+    historial=inter_v3[inter_v3["id"]==id_interno]
+    score_hist=np.zeros(X.shape[0])
+    if not historial.empty:
+        idx=historial["instance_id"].map(book_to_row).dropna().astype(int)
+        pesos=historial.loc[idx.index,"peso"].values
+        if len(idx)>0 and pesos.sum()>0:
+            uv=X[idx.values].multiply(pesos.reshape(-1,1)).sum(axis=0)
+            uv=csr_matrix(uv/pesos.sum())
+            score_hist=cosine_similarity(uv,X).ravel()
+
+    fila_perfil = perfil_v3.loc[id_interno] if id_interno in perfil_v3.index else None
+    facultad_usuario = fila_perfil["facultad_clean"] if fila_perfil is not None else ""
+    programa_usuario = fila_perfil["programa_clean"] if fila_perfil is not None else ""
+    tipo_usuario = fila_perfil["tipo_usuario"] if fila_perfil is not None else ""
+
+    txt = f"{facultad_usuario} {programa_usuario} {tipo_usuario}".strip()
+    score_perfil=np.zeros(X.shape[0])
+    if txt: score_perfil=cosine_similarity(vec.transform([txt]),X).ravel()
+
+    cand=obras.copy(); cand["score_historial"]=score_hist; cand["score_perfil"]=score_perfil
+    if not historial.empty:
+        cand=cand[~cand["instance_id"].isin(set(historial["instance_id"]))]
+
+    pf=pop_fac_v3[pop_fac_v3["facultad_clean"]==facultad_usuario][["instance_id","score_pop"]].rename(columns={"score_pop":"score_pop_fac"})
+    cand=cand.merge(pf,on="instance_id",how="left"); cand["score_pop_fac"]=cand["score_pop_fac"].fillna(0)
+
+    pp=pop_prog_v3[pop_prog_v3["programa_clean"]==programa_usuario][["instance_id","score_pop"]].rename(columns={"score_pop":"score_pop_prog"})
+    cand=cand.merge(pp,on="instance_id",how="left"); cand["score_pop_prog"]=cand["score_pop_prog"].fillna(0)
+
+    usa_programa=cand["score_pop_prog"].sum()>0
+    score_pop_base=cand["score_pop_prog"] if usa_programa else cand["score_pop_fac"]
+    mp=score_pop_base.max(); cand["score_pop_norm"]=score_pop_base/mp if mp>0 else 0
+
+    cand["score"]=W_HIST_V3*cand["score_historial"]+W_PERF_V3*cand["score_perfil"]+W_POP_V3*cand["score_pop_norm"]
+    return cand.sort_values("score",ascending=False).head(n)[["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 def _logo_puj_b64():
     with open("Logo PUJ.png", "rb") as f:
         return base64.b64encode(f.read()).decode()
 
-def render_sidebar(pantalla):
+def render_sidebar():
     st.markdown(f"""
     <div class="app-sidebar">
         <div class="logo-container">
@@ -465,19 +511,13 @@ def render_libros(df, prefix):
             favs.append(titulo[:60])
     return favs
 
-# ── Tabla TAM ──────────────────────────────────────────────────────────────────
-def tam_radio(label, key, opciones):
-    """Radio horizontal sin label visible arriba."""
-    return st.radio(label, opciones, horizontal=True, key=key,
-                    label_visibility="visible")
-
 # ── MAIN ───────────────────────────────────────────────────────────────────────
 def main():
     for k,v in [("pantalla","consentimiento"),("du",{}),("recs",{})]:
         if k not in st.session_state: st.session_state[k]=v
 
     pantalla = st.session_state.pantalla
-    render_sidebar(pantalla)
+    render_sidebar()
 
     # Contenedor principal (el margen/fondo del panel se aplican por CSS a section[data-testid="stMain"])
     with st.container():
@@ -501,7 +541,7 @@ Este ejercicio hace parte del trabajo de grado *"Diseño de un sistema de recome
 - Tu participación es **voluntaria**
 - Los datos recopilados se usarán **únicamente con fines académicos**
 - No se compartirán con terceros ni se publicarán datos individuales
-- El número de carnet es opcional y solo para control interno
+- Para personalizar tus recomendaciones, te pediremos tu ID de estudiante (obligatorio). Esta información se usa para consultar tu historial real de préstamos en la biblioteca y se usará **únicamente para este trabajo de grado**; no se comparte con terceros ni se publica de forma individual.
 - Los datos podrán utilizarse en futuras iteraciones del proyecto
 
 Los datos de este formulario serán usados exclusivamente para este trabajo de grado. Puede consultar la Política de Protección de Datos Personales de la Universidad en la página web www.javeriana.edu.co. El canal de comunicación para revocar la autorización otorgada o solicitar la supresión de los datos es el correo electrónico: usodedatos@javeriana.edu.co
@@ -525,7 +565,7 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("**Datos de identificación**")
-                carnet = st.text_input("Número de carnet (solo para control interno):", placeholder="Ej: 00123456")
+                id_estudiante = st.text_input("ID de estudiante:", placeholder="Ej: 20221234567")
                 edad   = st.text_input("Edad:", placeholder="Ej: 22")
                 genero = st.selectbox("Género:", ["Prefiero no decirlo","Femenino","Masculino","No binario","Otro"])
                 st.markdown("**Perfil académico**")
@@ -551,22 +591,32 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
             with c2:
                 if st.button("Continuar", type="primary"):
                     errores = []
+                    if not id_estudiante.strip(): errores.append("Por favor ingresa tu ID de estudiante.")
                     if facultad == "— Selecciona —": errores.append("Por favor selecciona tu facultad.")
                     if ("Estudiante" in perfil or perfil == "Profesor/a") and not semestre_cargo: errores.append("Por favor selecciona tu semestre o cargo.")
                     if tiene == "Sí" and not titulo_rec.strip(): errores.append("Por favor indica el título del libro que has prestado.")
                     if errores:
                         for e in errores: st.error(e)
                     else:
-                        st.session_state.du = {"carnet":carnet,"edad":edad,"perfil":perfil,"facultad":facultad,"programa":programa,"semestre_cargo":semestre_cargo,"genero":genero,"tiene_prestamos":tiene,"titulo_recordado":titulo_rec}
+                        st.session_state.du = {"edad":edad,"perfil":perfil,"facultad":facultad,"programa":programa,"semestre_cargo":semestre_cargo,"genero":genero,"tiene_prestamos":tiene,"titulo_recordado":titulo_rec}
                         with st.spinner("Generando tus recomendaciones..."):
                             datos = cargar_datos()
                             du    = st.session_state.du
-                            if du["tiene_prestamos"] == "Sí":
+                            # El "ID de estudiante" se usa UNICAMENTE aqui, para
+                            # resolver el id interno -- nunca se guarda en
+                            # session_state.du ni se persiste en la hoja (ver
+                            # buscar_id_interno() y la decision de proteccion de
+                            # datos documentada en scripts/precompute_cache_v3.py).
+                            id_interno = buscar_id_interno(id_estudiante, datos)
+                            if id_interno is not None:
+                                algoritmo = "A_v3"
+                                lista = rec_A_v3(id_interno, datos)
+                            elif du["tiene_prestamos"] == "Sí":
                                 algoritmo = "C"
                                 lista = rec_C(du.get("titulo_recordado",""),datos)
                             else:
                                 algoritmo = "A"
-                                lista = rec_A(du["facultad"],du["programa"],datos,carnet=du.get("carnet",""),perfil=du.get("perfil",""),genero=du.get("genero",""))
+                                lista = rec_A(du["facultad"],du["programa"],datos,perfil=du.get("perfil",""),genero=du.get("genero",""))
                             st.session_state.du["algoritmo"] = algoritmo
                             st.session_state.recs = {"lista":lista}
                         st.session_state.pantalla = "recomendaciones"; st.rerun()

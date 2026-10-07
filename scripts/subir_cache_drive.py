@@ -23,6 +23,14 @@ ARCHIVOS = [
     "pop_gen.parquet",
     "tfidf_matrix.npz",
     "tfidf_vectorizer.joblib",
+    # Tercera iteracion (scripts/precompute_cache_v3.py) -- mismo problema de
+    # cuota del service account descrito en CLAUDE.md, subir manualmente igual
+    # que los de arriba y pegar los IDs en ID_ARTEFACTOS_V3 de app_tam_v2.py.
+    "inter_v3.parquet",
+    "perfil_v3.parquet",
+    "pop_fac_v3.parquet",
+    "pop_prog_v3.parquet",
+    "estudiante_lookup.parquet",
 ]
 
 
