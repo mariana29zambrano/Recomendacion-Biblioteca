@@ -556,18 +556,53 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
                     if st.button("No deseo participar", use_container_width=True):
                         st.info("Gracias. Puedes cerrar esta ventana.")
 
-        # ── PERFIL ─────────────────────────────────────────────────────────────
+        # ── PERFIL (paso 1: ID + datos básicos para todos) ───────────────────────
         elif pantalla == "perfil":
             render_progress(1)
             st.markdown("## Cuéntanos sobre ti")
             st.caption("Esta información nos permite personalizar tus recomendaciones y mejorar el sistema en el futuro.")
 
+            st.markdown("**Datos de identificación**")
+            id_estudiante = st.text_input("ID de estudiante:", placeholder="Ej: 20221234567")
+            edad   = st.text_input("Edad:", placeholder="Ej: 22")
+            genero = st.selectbox("Género:", ["Prefiero no decirlo","Femenino","Masculino","No binario","Otro"])
+
+            c1, c2 = st.columns([1,4])
+            with c2:
+                if st.button("Continuar", type="primary"):
+                    if not id_estudiante.strip():
+                        st.error("Por favor ingresa tu ID de estudiante.")
+                    else:
+                        with st.spinner("Verificando tu información..."):
+                            datos = cargar_datos()
+                            # El "ID de estudiante" se usa UNICAMENTE aqui, para
+                            # resolver el id interno -- nunca se guarda en
+                            # session_state.du ni se persiste en la hoja (ver
+                            # buscar_id_interno() y la decision de proteccion de
+                            # datos documentada en scripts/precompute_cache_v3.py).
+                            id_interno = buscar_id_interno(id_estudiante, datos)
+                            st.session_state.du = {"edad":edad,"genero":genero}
+                            if id_interno is not None:
+                                # Match real: ya tenemos historial + perfil institucional
+                                # reales (rec_A_v3), no hace falta pedir el resto del
+                                # formulario -- solo se usaría para segmentar el TAM, y
+                                # eso ya no aplica aquí (decisión del 2026-10-08: no pedir
+                                # datos de más si no se van a usar para nada).
+                                st.session_state.du["algoritmo"] = "A_v3"
+                                st.session_state.recs = {"lista": rec_A_v3(id_interno, datos)}
+                                st.session_state.pantalla = "recomendaciones"
+                            else:
+                                st.session_state.pantalla = "perfil2"
+                        st.rerun()
+
+        # ── PERFIL (paso 2: resto de datos, solo si no hubo match por ID) ───────
+        elif pantalla == "perfil2":
+            render_progress(1)
+            st.markdown("## Cuéntanos un poco más")
+            st.caption("No encontramos tu ID en el directorio institucional — con estos datos generamos tu recomendación.")
+
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("**Datos de identificación**")
-                id_estudiante = st.text_input("ID de estudiante:", placeholder="Ej: 20221234567")
-                edad   = st.text_input("Edad:", placeholder="Ej: 22")
-                genero = st.selectbox("Género:", ["Prefiero no decirlo","Femenino","Masculino","No binario","Otro"])
                 st.markdown("**Perfil académico**")
                 perfil   = st.selectbox("¿Cuál es tu rol en la universidad?", PERFILES)
                 facultad = st.selectbox("Facultad:", ["— Selecciona —"]+sorted(FACULTADES_PROGRAMAS.keys()))
@@ -591,32 +626,22 @@ Los datos de este formulario serán usados exclusivamente para este trabajo de g
             with c2:
                 if st.button("Continuar", type="primary"):
                     errores = []
-                    if not id_estudiante.strip(): errores.append("Por favor ingresa tu ID de estudiante.")
                     if facultad == "— Selecciona —": errores.append("Por favor selecciona tu facultad.")
                     if ("Estudiante" in perfil or perfil == "Profesor/a") and not semestre_cargo: errores.append("Por favor selecciona tu semestre o cargo.")
                     if tiene == "Sí" and not titulo_rec.strip(): errores.append("Por favor indica el título del libro que has prestado.")
                     if errores:
                         for e in errores: st.error(e)
                     else:
-                        st.session_state.du = {"edad":edad,"perfil":perfil,"facultad":facultad,"programa":programa,"semestre_cargo":semestre_cargo,"genero":genero,"tiene_prestamos":tiene,"titulo_recordado":titulo_rec}
+                        st.session_state.du.update({"perfil":perfil,"facultad":facultad,"programa":programa,"semestre_cargo":semestre_cargo,"tiene_prestamos":tiene,"titulo_recordado":titulo_rec})
                         with st.spinner("Generando tus recomendaciones..."):
                             datos = cargar_datos()
-                            du    = st.session_state.du
-                            # El "ID de estudiante" se usa UNICAMENTE aqui, para
-                            # resolver el id interno -- nunca se guarda en
-                            # session_state.du ni se persiste en la hoja (ver
-                            # buscar_id_interno() y la decision de proteccion de
-                            # datos documentada en scripts/precompute_cache_v3.py).
-                            id_interno = buscar_id_interno(id_estudiante, datos)
-                            if id_interno is not None:
-                                algoritmo = "A_v3"
-                                lista = rec_A_v3(id_interno, datos)
-                            elif du["tiene_prestamos"] == "Sí":
+                            du = st.session_state.du
+                            if tiene == "Sí":
                                 algoritmo = "C"
-                                lista = rec_C(du.get("titulo_recordado",""),datos)
+                                lista = rec_C(titulo_rec, datos)
                             else:
                                 algoritmo = "A"
-                                lista = rec_A(du["facultad"],du["programa"],datos,perfil=du.get("perfil",""),genero=du.get("genero",""))
+                                lista = rec_A(facultad, programa, datos, perfil=perfil, genero=du.get("genero",""))
                             st.session_state.du["algoritmo"] = algoritmo
                             st.session_state.recs = {"lista":lista}
                         st.session_state.pantalla = "recomendaciones"; st.rerun()
