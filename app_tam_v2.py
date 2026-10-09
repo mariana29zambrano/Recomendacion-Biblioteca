@@ -376,7 +376,15 @@ def rec_A(fac,prog,datos,n=TOP_N,carnet="",perfil="",genero=""):
     mp=score_pop_base.max(); cand["score_pop_norm"]=score_pop_base/mp if mp>0 else 0
 
     cand["score"]=W_HIST*cand["score_historial"]+W_PERF*cand["score_perfil"]+W_POP*cand["score_pop_norm"]
-    return cand.sort_values("score",ascending=False).head(n)[["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
+    # El catalogo puede tener mas de un instance_id para la misma obra (ej. DVD vs
+    # Blu-ray de la misma pelicula, mismo content_text): sin este dedup, ambos quedan
+    # con score casi identico y se repite el titulo. Clave = titulo+contribuidores,
+    # NO solo titulo: 12,922 titulos del catalogo (ej. "Memorias", "Obras completas")
+    # agrupan decenas/cientos de obras DISTINTAS con el mismo titulo generico --
+    # deduplicar solo por titulo las colapsaria en una sola recomendacion incorrecta.
+    cand["_dup_key"]=cand[COL_TITLE].map(nt)+"||"+cand["contributors_text"].fillna("").map(nt)
+    cand=cand.sort_values("score",ascending=False).drop_duplicates("_dup_key",keep="first")
+    return cand.head(n)[["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
 
 def rec_C(titulo,datos,n=TOP_N):
     obras=datos["obras"]; vec=datos["vec"]; X=datos["X"]
@@ -386,7 +394,9 @@ def rec_C(titulo,datos,n=TOP_N):
     txt=re.sub(r"[^a-z0-9\s]"," ",unidecode(titulo.lower())).strip()
     sims=cosine_similarity(vec.transform([txt]),X).ravel()
     cand=obras.copy(); cand["score"]=sims
-    return cand.sort_values("score",ascending=False).iloc[1:n+1][["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
+    cand["_dup_key"]=cand[COL_TITLE].map(nt)+"||"+cand["contributors_text"].fillna("").map(nt)
+    cand=cand.sort_values("score",ascending=False).drop_duplicates("_dup_key",keep="first")
+    return cand.iloc[1:n+1][["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
 
 def buscar_id_interno(id_estudiante, datos):
     """Traduce el 'ID de estudiante' que escribe el participante al id interno
@@ -447,7 +457,9 @@ def rec_A_v3(id_interno, datos, n=TOP_N):
     mp=score_pop_base.max(); cand["score_pop_norm"]=score_pop_base/mp if mp>0 else 0
 
     cand["score"]=W_HIST_V3*cand["score_historial"]+W_PERF_V3*cand["score_perfil"]+W_POP_V3*cand["score_pop_norm"]
-    return cand.sort_values("score",ascending=False).head(n)[["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
+    cand["_dup_key"]=cand[COL_TITLE].map(nt)+"||"+cand["contributors_text"].fillna("").map(nt)
+    cand=cand.sort_values("score",ascending=False).drop_duplicates("_dup_key",keep="first")
+    return cand.head(n)[["instance_id",COL_TITLE,COL_SUBJECTS,COL_MTYPE,COL_CALL_NUMBER,"contributors_text"]].reset_index(drop=True)
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 def _logo_puj_b64():
